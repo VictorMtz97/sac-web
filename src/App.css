@@ -1,0 +1,165 @@
+body {
+  background: linear-gradient(135deg, #0a1628, #1a5276);
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 80px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+header nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 2px;
+}
+
+nav {
+  display: flex;
+  gap: 60px;
+}
+
+nav a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+nav a:hover {
+  color: white;
+}
+
+.container {
+  display: flex;
+  gap: 100px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 20px;
+  margin-top: -80px;
+}
+
+form {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 380px;
+}
+
+form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #1a5276;
+  font-size: 15px;
+}
+
+form input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 20px;
+  border: 2px solid #d0d7de;
+  border-radius: 8px;
+  font-size: 15px;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+}
+
+form input:focus {
+  border-color: #1a5276;
+  outline: none;
+}
+
+form button {
+  width: 100%;
+  padding: 14px;
+  background: #1a5276;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+form button:hover {
+  background: #0d2c45;
+}
+
+form a {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  color: #1a5276;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+form a:hover {
+  text-decoration: underline;
+}
+
+.image-box {
+  width: 380px;
+  height: 380px;
+  background-color: #0d2c45;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 1000px) {
+  .container {
+    flex-direction: column;
+    gap: 40px;
+    padding: 20px;
+  }
+  .image-box {
+    width: 280px;
+    height: 280px;
+  }
+}
+
+@media (max-width: 600px) {
+  header {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 20px;
+  }
+  header nav {
+    position: static;
+    transform: none;
+  }
+  nav {
+    gap: 25px;
+  }
+  form {
+    width: 100%;
+    max-width: 360px;
+    padding: 30px;
+  }
+  .image-box {
+    width: 200px;
+    height: 200px;
+  }
+  .container {
+    gap: 30px;
+    padding: 20px;
+  }
+}
