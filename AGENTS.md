@@ -42,6 +42,7 @@ src/
 ## Notas
 
 - **Siempre leer este archivo (AGENTS.md) primero** cuando alguien pregunte algo, escriba un mensaje o asigne una tarea.
+- **Trabajar siempre en la rama `development`**, nunca en `main`.
 - Build con Vite. Sin framework de CSS.
 - No hay tests configurados.
 - `.env` está en `.gitignore` — las credenciales de Supabase nunca se suben al repositorio.
