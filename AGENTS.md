@@ -39,6 +39,12 @@ src/
 - No cambiar colores ni agregar otros sin confirmación.
 - Después de cada cambio, preguntar al usuario si está conforme o si quiere revertirlo.
 
+## Despliegue en Vercel
+
+- `vercel.json` en la raíz con framework Vite.
+- Las variables de entorno `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` deben configurarse en el dashboard de Vercel (Project > Settings > Environment Variables).
+- `npm run build` genera la carpeta `dist/` que Vercel despliega automáticamente.
+
 ## Notas
 
 - **Siempre leer este archivo (AGENTS.md) primero** cuando alguien pregunte algo, escriba un mensaje o asigne una tarea.
