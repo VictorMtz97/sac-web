@@ -26,17 +26,35 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setErrorMsg('')
-    const { data, error } = await supabase
+
+    const { data: clientData, error: clientError } = await supabase
       .from('Clientes')
       .select('*')
       .eq('Name', user)
       .eq('Password', password)
-    if (error) {
-      setErrorMsg('Error de conexión: ' + error.message)
-    } else if (!data || data.length === 0) {
+
+    if (clientError) {
+      setErrorMsg('Error de conexión: ' + clientError.message)
+      return
+    }
+
+    if (clientData && clientData.length > 0) {
+      setUserData(clientData[0])
+      return
+    }
+
+    const { data: adminData, error: adminError } = await supabase
+      .from('Admins')
+      .select('*')
+      .eq('Name', user)
+      .eq('Password', password)
+
+    if (adminError) {
+      setErrorMsg('Error de conexión: ' + adminError.message)
+    } else if (!adminData || adminData.length === 0) {
       setErrorMsg('Usuario o contraseña incorrectos')
     } else {
-      setUserData(data[0])
+      setUserData({ ...adminData[0], isAdmin: true })
     }
   }
 
