@@ -268,6 +268,39 @@ form a:hover {
   }
 }
 
+.env-badge {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Segoe UI', sans-serif;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: white;
+  z-index: 9999;
+  user-select: none;
+  pointer-events: none;
+}
+
+.env-badge-label {
+  background: #f59e0b;
+  color: #1a1a1a;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.env-badge-version {
+  opacity: 0.85;
+}
+
 @media (max-width: 600px) {
   header {
     flex-direction: column;
