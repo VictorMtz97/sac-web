@@ -25,7 +25,8 @@ function App() {
   const [successMsg, setSuccessMsg] = useState('')
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [verifyEmail, setVerifyEmail] = useState('')
-  const [verifyCode, setVerifyCode] = useState(Array(6).fill(''))
+  const [verifyCode, setVerifyCode] = useState(Array(8).fill(''))
+  const [emailAlreadyExists, setEmailAlreadyExists] = useState(false)
   const codeRefs = useRef([])
 
   const reqs = {
@@ -37,6 +38,16 @@ function App() {
   }
 
   const allReqsMet = Object.values(reqs).every(Boolean)
+
+  const checkEmailExists = async (email) => {
+    if (!email) return
+    const { data } = await supabase
+      .from('Clientes')
+      .select('id')
+      .eq('Email', email)
+      .maybeSingle()
+    setEmailAlreadyExists(!!data)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -86,16 +97,40 @@ function App() {
       return
     }
 
-    const { error } = await supabase
+    const { data: existing } = await supabase
       .from('Clientes')
-      .insert({ Name: regName, Email: regEmail, Password: regPassword })
+      .select('id')
+      .eq('Email', regEmail)
+      .maybeSingle()
 
-    if (error) {
-      setErrorMsg('Error al registrarse: ' + error.message)
+    if (existing) {
+      setEmailAlreadyExists(true)
+      setErrorMsg('Este correo ya está registrado')
       return
     }
 
-    setSuccessMsg('Cuenta creada exitosamente. Ahora puedes iniciar sesión.')
+    const { data, error } = await supabase
+      .from('Clientes')
+      .insert({ Name: regName, Email: regEmail, Password: regPassword })
+      .select()
+
+    if (error) {
+      console.error('Error completo:', error)
+      setErrorMsg('Error al registrarse: ' + error.message + ' (detalles en consola F12)')
+      return
+    }
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({ email: regEmail })
+
+    if (otpError) {
+      setErrorMsg('Error al enviar código: ' + otpError.message)
+      return
+    }
+
+    setVerifyEmail(regEmail)
+    setVerifyCode(Array(8).fill(''))
+    setIsRegister(false)
+    setPage('verify')
     setRegName('')
     setRegEmail('')
     setRegPassword('')
@@ -126,12 +161,37 @@ function App() {
     }
   }
 
+  const handleVerifyCode = async () => {
+    setErrorMsg('')
+    const code = verifyCode.join('')
+    if (code.length !== 8) {
+      setErrorMsg('Ingresa el código completo de 8 dígitos')
+      return
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: verifyEmail,
+      token: code,
+      type: 'email',
+    })
+
+    if (error) {
+      setErrorMsg('Código incorrecto o expirado')
+      return
+    }
+
+    setSuccessMsg('Correo verificado exitosamente. Ahora puedes iniciar sesión.')
+    setPage('login')
+    setVerifyEmail('')
+    setVerifyCode(Array(6).fill(''))
+  }
+
   const handleCodeChange = (index, value) => {
     if (!/^\d$/.test(value) && value !== '') return
     const newCode = [...verifyCode]
     newCode[index] = value
     setVerifyCode(newCode)
-    if (value && index < 5) {
+    if (value && index < 7) {
       codeRefs.current[index + 1].focus()
     }
   }
@@ -195,9 +255,11 @@ function App() {
                   type="email"
                   id="reg-email"
                   value={regEmail}
-                  onChange={(e) => { setRegEmail(e.target.value); setErrorMsg('') }}
+                  onChange={(e) => { setRegEmail(e.target.value); setEmailAlreadyExists(false); setErrorMsg('') }}
+                  onBlur={(e) => checkEmailExists(e.target.value)}
                   required
                 />
+                {emailAlreadyExists && <div className="email-taken">Este correo ya está registrado</div>}
                 <label htmlFor="reg-password">Contraseña:</label>
                 <div className="password-wrapper">
                   <input
@@ -302,7 +364,7 @@ function App() {
             <div className="verify-box">
               <h2 className="form-title">Verifica tu correo</h2>
               <p className="verify-text">
-                Ingresa el código de 6 dígitos enviado a:<br />
+                Ingresa el código de 8 dígitos enviado a:<br />
                 <strong>{verifyEmail}</strong>
               </p>
               <div className="code-inputs">
@@ -320,8 +382,9 @@ function App() {
                   />
                 ))}
               </div>
-              <button>Verificar código</button>
-              <a href="#" onClick={(e) => { e.preventDefault(); setPage('login'); setVerifyEmail(''); setVerifyCode(Array(6).fill('')) }}>
+              {errorMsg && <div className="error-msg">{errorMsg}</div>}
+              <button onClick={handleVerifyCode}>Verificar código</button>
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('login'); setVerifyEmail(''); setVerifyCode(Array(8).fill('')) }}>
                 Volver al inicio de sesión
               </a>
             </div>
