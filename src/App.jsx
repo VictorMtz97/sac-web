@@ -22,6 +22,17 @@ function App() {
   const [showModal, setShowModal] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [passwordTouched, setPasswordTouched] = useState(false)
+
+  const reqs = {
+    minLength: regPassword.length >= 10,
+    hasUpper: /[A-Z]/.test(regPassword),
+    hasLower: /[a-z]/.test(regPassword),
+    hasNumber: /\d/.test(regPassword),
+    hasSymbol: /[^A-Za-z0-9]/.test(regPassword),
+  }
+
+  const allReqsMet = Object.values(reqs).every(Boolean)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -61,6 +72,10 @@ function App() {
   const handleRegister = (e) => {
     e.preventDefault()
     setErrorMsg('')
+    if (!allReqsMet) {
+      setErrorMsg('La contraseña no cumple los requisitos de seguridad')
+      return
+    }
     if (regPassword !== regConfirm) {
       setErrorMsg('Las contraseñas no coinciden')
       return
@@ -160,7 +175,7 @@ function App() {
                     type={showRegPassword ? 'text' : 'password'}
                     id="reg-password"
                     value={regPassword}
-                    onChange={(e) => { setRegPassword(e.target.value); setErrorMsg('') }}
+                    onChange={(e) => { setRegPassword(e.target.value); setPasswordTouched(true); setErrorMsg('') }}
                     required
                   />
                   <button
@@ -172,6 +187,22 @@ function App() {
                     {showRegPassword ? EyeOffIcon() : EyeIcon()}
                   </button>
                 </div>
+                {passwordTouched && (
+                <ul className="req-list">
+                  <li className={reqs.minLength ? 'req-met' : 'req-unmet'}>
+                    {regPassword.length}/10 caracteres
+                  </li>
+                  <li className={reqs.hasUpper && reqs.hasLower ? 'req-met' : 'req-unmet'}>
+                    Mayúsculas y minúsculas
+                  </li>
+                  <li className={reqs.hasNumber ? 'req-met' : 'req-unmet'}>
+                    Al menos un número
+                  </li>
+                  <li className={reqs.hasSymbol ? 'req-met' : 'req-unmet'}>
+                    Al menos un signo/símbolo
+                  </li>
+                </ul>
+                )}
                 <label htmlFor="reg-confirm">Confirmar contraseña:</label>
                 <div className="password-wrapper">
                   <input

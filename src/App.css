@@ -127,6 +127,61 @@ form input:focus {
   background: none;
 }
 
+.req-list {
+  list-style: none;
+  padding: 0;
+  margin: -8px 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.req-list li {
+  padding: 3px 0 3px 22px;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.req-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  transition: background 0.2s;
+}
+
+.req-list li.req-met::before {
+  background: #2e7d32;
+  content: '✓';
+  color: white;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.req-list li.req-unmet::before {
+  background: #d32f2f;
+  content: '✗';
+  color: white;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.req-met {
+  color: #2e7d32;
+}
+
+.req-unmet {
+  color: #d32f2f;
+}
+
 .error-msg {
   color: #d32f2f;
   background: rgba(211, 47, 47, 0.1);
