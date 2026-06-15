@@ -86,12 +86,14 @@ function App() {
       return
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('Clientes')
       .insert({ Name: regName, Email: regEmail, Password: regPassword })
+      .select()
 
     if (error) {
-      setErrorMsg('Error al registrarse: ' + error.message)
+      console.error('Error completo:', error)
+      setErrorMsg('Error al registrarse: ' + error.message + ' (detalles en consola F12)')
       return
     }
 
