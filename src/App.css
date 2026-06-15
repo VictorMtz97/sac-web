@@ -127,6 +127,13 @@ form input:focus {
   background: none;
 }
 
+.email-taken {
+  color: #d32f2f;
+  font-size: 13px;
+  font-weight: 500;
+  margin: -14px 0 18px;
+}
+
 .req-list {
   list-style: none;
   padding: 0;
@@ -477,11 +484,11 @@ form {
     padding: 30px 20px;
   }
   .code-inputs {
-    gap: 8px;
+    gap: 6px;
   }
   .code-inputs input {
-    width: 42px;
-    height: 50px;
-    font-size: 20px;
+    width: 36px;
+    height: 44px;
+    font-size: 18px;
   }
 }
