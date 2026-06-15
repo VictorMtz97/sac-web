@@ -95,10 +95,7 @@ function App() {
       return
     }
 
-    setVerifyEmail(regEmail)
-    setVerifyCode(Array(6).fill(''))
-    setIsRegister(false)
-    setPage('verify')
+    setSuccessMsg('Cuenta creada exitosamente. Ahora puedes iniciar sesión.')
     setRegName('')
     setRegEmail('')
     setRegPassword('')
@@ -291,9 +288,10 @@ function App() {
                   </button>
                 </div>
                 {errorMsg && <div className="error-msg">{errorMsg}</div>}
+                {successMsg && <div className="success-msg">{successMsg}</div>}
                 <button type="submit">Iniciar sesión</button>
                 <a href="#" onClick={(e) => { e.preventDefault(); setShowModal(true) }}>¿Olvidaste tu contraseña?</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿No tienes cuenta? Regístrate</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); setSuccessMsg(''); switchMode() }}>¿No tienes cuenta? Regístrate</a>
               </form>
               )}
           </div>
