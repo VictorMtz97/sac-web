@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
 import Dashboard from './Dashboard'
 import QuienesSomos from './pages/QuienesSomos'
@@ -22,7 +22,11 @@ function App() {
   const [showModal, setShowModal] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [passwordTouched, setPasswordTouched] = useState(false)
+  const [verifyEmail, setVerifyEmail] = useState('')
+  const [verifyCode, setVerifyCode] = useState(Array(6).fill(''))
+  const codeRefs = useRef([])
 
   const reqs = {
     minLength: regPassword.length >= 10,
@@ -41,7 +45,7 @@ function App() {
     const { data: clientData, error: clientError } = await supabase
       .from('Clientes')
       .select('*')
-      .eq('Name', user)
+      .ilike('Name', user)
       .eq('Password', password)
 
     if (clientError) {
@@ -57,7 +61,7 @@ function App() {
     const { data: adminData, error: adminError } = await supabase
       .from('Admins')
       .select('*')
-      .eq('Name', user)
+      .ilike('Name', user)
       .eq('Password', password)
 
     if (adminError) {
@@ -69,9 +73,10 @@ function App() {
     }
   }
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
     setErrorMsg('')
+    setSuccessMsg('')
     if (!allReqsMet) {
       setErrorMsg('La contraseña no cumple los requisitos de seguridad')
       return
@@ -80,14 +85,25 @@ function App() {
       setErrorMsg('Las contraseñas no coinciden')
       return
     }
-    setErrorMsg('')
+
+    const { error } = await supabase
+      .from('Clientes')
+      .insert({ Name: regName, Email: regEmail, Password: regPassword })
+
+    if (error) {
+      setErrorMsg('Error al registrarse: ' + error.message)
+      return
+    }
+
+    setVerifyEmail(regEmail)
+    setVerifyCode(Array(6).fill(''))
     setIsRegister(false)
-    setUser(regName)
-    setPassword(regPassword)
+    setPage('verify')
     setRegName('')
     setRegEmail('')
     setRegPassword('')
     setRegConfirm('')
+    setPasswordTouched(false)
   }
 
   const switchMode = () => {
@@ -110,6 +126,22 @@ function App() {
       alert('Correo de recuperación enviado. Revisa tu bandeja de entrada.')
       setShowModal(false)
       setResetEmail('')
+    }
+  }
+
+  const handleCodeChange = (index, value) => {
+    if (!/^\d$/.test(value) && value !== '') return
+    const newCode = [...verifyCode]
+    newCode[index] = value
+    setVerifyCode(newCode)
+    if (value && index < 5) {
+      codeRefs.current[index + 1].focus()
+    }
+  }
+
+  const handleCodeKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !verifyCode[index] && index > 0) {
+      codeRefs.current[index - 1].focus()
     }
   }
 
@@ -222,6 +254,7 @@ function App() {
                   </button>
                 </div>
                 {errorMsg && <div className="error-msg">{errorMsg}</div>}
+                {successMsg && <div className="success-msg">{successMsg}</div>}
                 <button type="submit">Crear cuenta</button>
                 <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿Ya tienes cuenta? Inicia sesión</a>
               </form>
@@ -263,6 +296,37 @@ function App() {
                 <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿No tienes cuenta? Regístrate</a>
               </form>
               )}
+          </div>
+          )}
+          {page === 'verify' && (
+          <div className="container">
+            <div className="image-box"></div>
+            <div className="verify-box">
+              <h2 className="form-title">Verifica tu correo</h2>
+              <p className="verify-text">
+                Ingresa el código de 6 dígitos enviado a:<br />
+                <strong>{verifyEmail}</strong>
+              </p>
+              <div className="code-inputs">
+                {verifyCode.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (codeRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleCodeChange(index, e.target.value)}
+                    onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                    autoFocus={index === 0}
+                  />
+                ))}
+              </div>
+              <button>Verificar código</button>
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('login'); setVerifyEmail(''); setVerifyCode(Array(6).fill('')) }}>
+                Volver al inicio de sesión
+              </a>
+            </div>
           </div>
           )}
           {showModal && (
