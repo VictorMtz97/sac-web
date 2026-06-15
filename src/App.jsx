@@ -72,7 +72,7 @@ function App() {
     const { data: adminData, error: adminError } = await supabase
       .from('Admins')
       .select('*')
-      .ilike('Name', user)
+      .ilike('Usuario', user)
       .eq('Password', password)
 
     if (adminError) {
