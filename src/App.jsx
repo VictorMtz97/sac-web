@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import Dashboard from './Dashboard'
 import QuienesSomos from './pages/QuienesSomos'
 import Catalogo from './pages/Catalogo'
+import { version as appVersion } from '../package.json'
 import './App.css'
 
 function App() {
@@ -21,27 +22,60 @@ function App() {
   const [showModal, setShowModal] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [passwordTouched, setPasswordTouched] = useState(false)
+
+  const reqs = {
+    minLength: regPassword.length >= 10,
+    hasUpper: /[A-Z]/.test(regPassword),
+    hasLower: /[a-z]/.test(regPassword),
+    hasNumber: /\d/.test(regPassword),
+    hasSymbol: /[^A-Za-z0-9]/.test(regPassword),
+  }
+
+  const allReqsMet = Object.values(reqs).every(Boolean)
 
   const handleLogin = async (e) => {
     e.preventDefault()
     setErrorMsg('')
-    const { data, error } = await supabase
+
+    const { data: clientData, error: clientError } = await supabase
       .from('Clientes')
       .select('*')
       .eq('Name', user)
       .eq('Password', password)
-    if (error) {
-      setErrorMsg('Error de conexión: ' + error.message)
-    } else if (!data || data.length === 0) {
+
+    if (clientError) {
+      setErrorMsg('Error de conexión: ' + clientError.message)
+      return
+    }
+
+    if (clientData && clientData.length > 0) {
+      setUserData(clientData[0])
+      return
+    }
+
+    const { data: adminData, error: adminError } = await supabase
+      .from('Admins')
+      .select('*')
+      .eq('Name', user)
+      .eq('Password', password)
+
+    if (adminError) {
+      setErrorMsg('Error de conexión: ' + adminError.message)
+    } else if (!adminData || adminData.length === 0) {
       setErrorMsg('Usuario o contraseña incorrectos')
     } else {
-      setUserData(data[0])
+      setUserData({ ...adminData[0], isAdmin: true })
     }
   }
 
   const handleRegister = (e) => {
     e.preventDefault()
     setErrorMsg('')
+    if (!allReqsMet) {
+      setErrorMsg('La contraseña no cumple los requisitos de seguridad')
+      return
+    }
     if (regPassword !== regConfirm) {
       setErrorMsg('Las contraseñas no coinciden')
       return
@@ -98,143 +132,164 @@ function App() {
     )
   }
 
-  if (userData) {
-    return <Dashboard user={userData} onLogout={handleLogout} />
-  }
-
   return (
     <>
-      <header>
-        <div className="logo" onClick={() => setPage('login')} style={{ cursor: 'pointer' }}>SAC</div>
-        <nav>
-          <a href="#" onClick={(e) => { e.preventDefault(); setPage('quienes-somos') }}>Quiénes somos</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setPage('catalogo') }}>Catálogo</a>
-        </nav>
-      </header>
-      {page === 'quienes-somos' && <QuienesSomos />}
-      {page === 'catalogo' && <Catalogo />}
-      {page === 'login' && (
-      <div className="container">
-        <div className="image-box"></div>
-        {isRegister ? (
-          <form onSubmit={handleRegister} autoComplete="off">
-            <h2 className="form-title">Registrarse</h2>
-            <label htmlFor="reg-nombre">Nombre:</label>
-            <input
-              type="text"
-              id="reg-nombre"
-              value={regName}
-              onChange={(e) => { setRegName(e.target.value); setErrorMsg('') }}
-              required
-            />
-            <label htmlFor="reg-email">Correo electrónico:</label>
-            <input
-              type="email"
-              id="reg-email"
-              value={regEmail}
-              onChange={(e) => { setRegEmail(e.target.value); setErrorMsg('') }}
-              required
-            />
-            <label htmlFor="reg-password">Contraseña:</label>
-            <div className="password-wrapper">
-              <input
-                type={showRegPassword ? 'text' : 'password'}
-                id="reg-password"
-                value={regPassword}
-                onChange={(e) => { setRegPassword(e.target.value); setErrorMsg('') }}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowRegPassword(!showRegPassword)}
-                tabIndex={-1}
-              >
-                {showRegPassword ? EyeOffIcon() : EyeIcon()}
-              </button>
-            </div>
-            <label htmlFor="reg-confirm">Confirmar contraseña:</label>
-            <div className="password-wrapper">
-              <input
-                type={showRegConfirm ? 'text' : 'password'}
-                id="reg-confirm"
-                value={regConfirm}
-                onChange={(e) => { setRegConfirm(e.target.value); setErrorMsg('') }}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowRegConfirm(!showRegConfirm)}
-                tabIndex={-1}
-              >
-                {showRegConfirm ? EyeOffIcon() : EyeIcon()}
-              </button>
-            </div>
-            {errorMsg && <div className="error-msg">{errorMsg}</div>}
-            <button type="submit">Crear cuenta</button>
-            <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿Ya tienes cuenta? Inicia sesión</a>
-          </form>
-          ) : (
-          <form onSubmit={handleLogin} autoComplete="off">
-            <h2 className="form-title">Iniciar sesión</h2>
-            <label htmlFor="usuario">Usuario:</label>
-            <input
-              type="text"
-              id="usuario"
-              name="usuario"
-              value={user}
-              onChange={(e) => { setUser(e.target.value); setErrorMsg('') }}
-              required
-            />
-            <label htmlFor="contrasena">Contraseña:</label>
-            <div className="password-wrapper">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="contrasena"
-                name="contrasena"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setErrorMsg('') }}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-              >
-                {showPassword ? EyeOffIcon() : EyeIcon()}
-              </button>
-            </div>
-            {errorMsg && <div className="error-msg">{errorMsg}</div>}
-            <button type="submit">Iniciar sesión</button>
-            <a href="#" onClick={(e) => { e.preventDefault(); setShowModal(true) }}>¿Olvidaste tu contraseña?</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿No tienes cuenta? Regístrate</a>
-          </form>
-          )}
-      </div>
-
-      )}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
-            <h2>Recuperar contraseña</h2>
-            <form onSubmit={handleResetPassword}>
-              <label htmlFor="reset-email">Ingresa tu correo electrónico:</label>
-              <input
-                type="email"
-                id="reset-email"
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                required
-              />
-              <button type="submit">Enviar enlace</button>
-            </form>
+      {userData ? (
+        <Dashboard user={userData} onLogout={handleLogout} />
+      ) : (
+        <>
+          <header>
+            <div className="logo" onClick={() => setPage('login')} style={{ cursor: 'pointer' }}>SAC</div>
+            <nav>
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('quienes-somos') }}>Quiénes somos</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('catalogo') }}>Catálogo</a>
+            </nav>
+          </header>
+          {page === 'quienes-somos' && <QuienesSomos />}
+          {page === 'catalogo' && <Catalogo />}
+          {page === 'login' && (
+          <div className="container">
+            <div className="image-box"></div>
+            {isRegister ? (
+              <form onSubmit={handleRegister} autoComplete="off">
+                <h2 className="form-title">Registrarse</h2>
+                <label htmlFor="reg-nombre">Nombre:</label>
+                <input
+                  type="text"
+                  id="reg-nombre"
+                  value={regName}
+                  onChange={(e) => { setRegName(e.target.value); setErrorMsg('') }}
+                  required
+                />
+                <label htmlFor="reg-email">Correo electrónico:</label>
+                <input
+                  type="email"
+                  id="reg-email"
+                  value={regEmail}
+                  onChange={(e) => { setRegEmail(e.target.value); setErrorMsg('') }}
+                  required
+                />
+                <label htmlFor="reg-password">Contraseña:</label>
+                <div className="password-wrapper">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    id="reg-password"
+                    value={regPassword}
+                    onChange={(e) => { setRegPassword(e.target.value); setPasswordTouched(true); setErrorMsg('') }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    tabIndex={-1}
+                  >
+                    {showRegPassword ? EyeOffIcon() : EyeIcon()}
+                  </button>
+                </div>
+                {passwordTouched && (
+                <ul className="req-list">
+                  <li className={reqs.minLength ? 'req-met' : 'req-unmet'}>
+                    {regPassword.length}/10 caracteres
+                  </li>
+                  <li className={reqs.hasUpper && reqs.hasLower ? 'req-met' : 'req-unmet'}>
+                    Mayúsculas y minúsculas
+                  </li>
+                  <li className={reqs.hasNumber ? 'req-met' : 'req-unmet'}>
+                    Al menos un número
+                  </li>
+                  <li className={reqs.hasSymbol ? 'req-met' : 'req-unmet'}>
+                    Al menos un signo/símbolo
+                  </li>
+                </ul>
+                )}
+                <label htmlFor="reg-confirm">Confirmar contraseña:</label>
+                <div className="password-wrapper">
+                  <input
+                    type={showRegConfirm ? 'text' : 'password'}
+                    id="reg-confirm"
+                    value={regConfirm}
+                    onChange={(e) => { setRegConfirm(e.target.value); setErrorMsg('') }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowRegConfirm(!showRegConfirm)}
+                    tabIndex={-1}
+                  >
+                    {showRegConfirm ? EyeOffIcon() : EyeIcon()}
+                  </button>
+                </div>
+                {errorMsg && <div className="error-msg">{errorMsg}</div>}
+                <button type="submit">Crear cuenta</button>
+                <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿Ya tienes cuenta? Inicia sesión</a>
+              </form>
+              ) : (
+              <form onSubmit={handleLogin} autoComplete="off">
+                <h2 className="form-title">Iniciar sesión</h2>
+                <label htmlFor="usuario">Usuario:</label>
+                <input
+                  type="text"
+                  id="usuario"
+                  name="usuario"
+                  value={user}
+                  onChange={(e) => { setUser(e.target.value); setErrorMsg('') }}
+                  required
+                />
+                <label htmlFor="contrasena">Contraseña:</label>
+                <div className="password-wrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="contrasena"
+                    name="contrasena"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setErrorMsg('') }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? EyeOffIcon() : EyeIcon()}
+                  </button>
+                </div>
+                {errorMsg && <div className="error-msg">{errorMsg}</div>}
+                <button type="submit">Iniciar sesión</button>
+                <a href="#" onClick={(e) => { e.preventDefault(); setShowModal(true) }}>¿Olvidaste tu contraseña?</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); switchMode() }}>¿No tienes cuenta? Regístrate</a>
+              </form>
+              )}
           </div>
-        </div>
+          )}
+          {showModal && (
+            <div className="modal-overlay" onClick={() => setShowModal(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
+                <h2>Recuperar contraseña</h2>
+                <form onSubmit={handleResetPassword}>
+                  <label htmlFor="reset-email">Ingresa tu correo electrónico:</label>
+                  <input
+                    type="email"
+                    id="reset-email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                  <button type="submit">Enviar enlace</button>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
       )}
+      <div className="env-badge">
+        <span className="env-badge-label">Staging</span>
+        <span className="env-badge-version">v{appVersion}</span>
+      </div>
     </>
   )
 }

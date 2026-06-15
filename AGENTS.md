@@ -54,3 +54,26 @@ src/
 - `.env` está en `.gitignore` — las credenciales de Supabase nunca se suben al repositorio.
 - **Preguntar siempre antes** de ejecutar cualquier operación de Git (commit, push, pull, merge, cambiar de rama, etc.).
 - Si se agregan herramientas (linter, tester, etc.), documentar comandos aquí.
+
+## Versionado Semántico (SemVer)
+
+Este proyecto sigue [SemVer 2.0.0](https://semver.org/lang/es/). Formato: `MAYOR.MENOR.PARCHE`.
+
+| Incremento | Cuándo aplica | Ejemplo |
+|---|---|---|
+| **MAYOR** | Cambios incompatibles en API/funcionalidad que rompen compatibilidad con versiones anteriores | `1.0.0` → `2.0.0` |
+| **MENOR** | Nueva funcionalidad compatible con versiones anteriores | `1.0.0` → `1.1.0` |
+| **PARCHE** | Corrección de errores compatible con versiones anteriores | `1.0.0` → `1.0.1` |
+
+- Versiones `0.y.z` = desarrollo inicial, todo puede cambiar.
+- Prelanzamiento: `-alpha`, `-beta`, `-rc.1`, etc.
+- Antes de cada cambio se indicará qué tipo de incremento corresponde y la versión resultante.
+- La versión en `package.json` se actualiza solo cuando se acuerde.
+
+## Environment Badge
+
+- En la esquina inferior derecha de **todas las páginas** se muestra un badge con el entorno (`Staging`) y la versión (`v0.0.1`).
+- Está implementado en `App.jsx` como `<div className="env-badge">` y se renderiza siempre, sin importar la página o el estado de autenticación.
+- **Toda nueva página o componente** debe agregarse dentro de la estructura renderizada por `App.jsx` (dentro del fragmento principal) para que herede automáticamente el badge. No crear layouts independientes que omitan `App.jsx`.
+- Estilos del badge en `App.css` (clases `.env-badge`, `.env-badge-label`, `.env-badge-version`).
+- La versión se obtiene automáticamente de `package.json` mediante `import { version } from '../package.json'`. Para cambiar la versión, actualizar `package.json`.
