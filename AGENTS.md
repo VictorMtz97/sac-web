@@ -35,7 +35,8 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 
 - `main` — producción.
 - `development` — rama principal de trabajo.
-- `registro-y-verificacion-de-correo` — rama activa para registro + verificación por correo.
+- `registro-y-verificacion-de-correo` — rama para registro + verificación por correo.
+- `apartado-admin-registro` — rama activa para panel de administración de admins.
 
 ## Notas
 
@@ -58,8 +59,8 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 
 ## Login
 
-- Busca por `Name` + `Password` primero en `Clientes`, luego en `Admins`.
-- La comparación de nombre es case-insensitive (`ilike`).
+- Busca por `Name` + `Password` primero en `Clientes`, luego por `Usuario` + `Password` en `Admins`.
+- La comparación de nombre/usuario es case-insensitive (`ilike`).
 - RLS requiere políticas SELECT `TO public` en ambas tablas.
 
 ## Estructura
