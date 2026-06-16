@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Dashboard from './Dashboard'
 import QuienesSomos from './pages/QuienesSomos'
@@ -39,6 +39,64 @@ function App() {
 
   const allReqsMet = Object.values(reqs).every(Boolean)
 
+  const SESSION_KEY = 'sac_session'
+  const INACTIVITY_TIMEOUT = 5 * 60 * 1000
+
+  const saveSession = (user) => {
+    const { Password, ...safeUser } = user
+    const session = { user: safeUser, lastActivity: Date.now() }
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  }
+
+  const clearSession = () => {
+    localStorage.removeItem(SESSION_KEY)
+  }
+
+  const updateActivity = () => {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return
+    const session = JSON.parse(raw)
+    session.lastActivity = Date.now()
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  }
+
+  useEffect(() => {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (raw) {
+      const session = JSON.parse(raw)
+      const elapsed = Date.now() - session.lastActivity
+      if (elapsed < INACTIVITY_TIMEOUT) {
+        setUserData(session.user)
+      } else {
+        clearSession()
+      }
+    }
+
+    const onActivity = () => updateActivity()
+    window.addEventListener('mousedown', onActivity)
+    window.addEventListener('keydown', onActivity)
+    window.addEventListener('touchstart', onActivity)
+    window.addEventListener('scroll', onActivity)
+
+    const checkInactivity = setInterval(() => {
+      const stored = localStorage.getItem(SESSION_KEY)
+      if (!stored) return
+      const s = JSON.parse(stored)
+      if (Date.now() - s.lastActivity > INACTIVITY_TIMEOUT) {
+        clearSession()
+        setUserData(null)
+      }
+    }, 10000)
+
+    return () => {
+      window.removeEventListener('mousedown', onActivity)
+      window.removeEventListener('keydown', onActivity)
+      window.removeEventListener('touchstart', onActivity)
+      window.removeEventListener('scroll', onActivity)
+      clearInterval(checkInactivity)
+    }
+  }, [])
+
   const checkEmailExists = async (email) => {
     if (!email) return
     const { data } = await supabase
@@ -66,7 +124,9 @@ function App() {
 
     if (adminData && adminData.length > 0) {
       const admin = adminData[0]
-      setUserData({ ...admin, Name: admin.Nombre || admin.Usuario, isAdmin: true })
+      const userWithName = { ...admin, Name: admin.Nombre || admin.Usuario, isAdmin: true }
+      setUserData(userWithName)
+      saveSession(userWithName)
       return
     }
 
@@ -81,7 +141,9 @@ function App() {
     } else if (!clientData || clientData.length === 0) {
       setErrorMsg('Usuario o contraseña incorrectos')
     } else {
-      setUserData(clientData[0])
+      const client = clientData[0]
+      setUserData(client)
+      saveSession(client)
     }
   }
 
@@ -145,6 +207,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    clearSession()
     setUserData(null)
   }
 
