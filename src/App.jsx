@@ -53,22 +53,6 @@ function App() {
     e.preventDefault()
     setErrorMsg('')
 
-    const { data: clientData, error: clientError } = await supabase
-      .from('Clientes')
-      .select('*')
-      .ilike('Name', user)
-      .eq('Password', password)
-
-    if (clientError) {
-      setErrorMsg('Error de conexión: ' + clientError.message)
-      return
-    }
-
-    if (clientData && clientData.length > 0) {
-      setUserData(clientData[0])
-      return
-    }
-
     const { data: adminData, error: adminError } = await supabase
       .from('Admins')
       .select('*')
@@ -77,10 +61,27 @@ function App() {
 
     if (adminError) {
       setErrorMsg('Error de conexión: ' + adminError.message)
-    } else if (!adminData || adminData.length === 0) {
+      return
+    }
+
+    if (adminData && adminData.length > 0) {
+      const admin = adminData[0]
+      setUserData({ ...admin, Name: admin.Nombre || admin.Usuario, isAdmin: true })
+      return
+    }
+
+    const { data: clientData, error: clientError } = await supabase
+      .from('Clientes')
+      .select('*')
+      .ilike('Name', user)
+      .eq('Password', password)
+
+    if (clientError) {
+      setErrorMsg('Error de conexión: ' + clientError.message)
+    } else if (!clientData || clientData.length === 0) {
       setErrorMsg('Usuario o contraseña incorrectos')
     } else {
-      setUserData({ ...adminData[0], isAdmin: true })
+      setUserData(clientData[0])
     }
   }
 
