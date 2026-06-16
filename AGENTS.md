@@ -45,6 +45,7 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 - No hay tests configurados.
 - `.env` está en `.gitignore` — las credenciales de Supabase nunca se suben al repositorio.
 - **Preguntar siempre antes** de ejecutar cualquier operación de Git (commit, push, pull, merge, cambiar de rama, etc.).
+- **⚠️ Alerta al crear ramas nuevas:** Si se crea una rama desde `development`, puede que no incluya funcionalidades que existen en otras ramas (ej: `apartado-admin-registro`). Siempre verificar que la rama base tenga todo lo necesario o hacer merge de las ramas faltantes.
 - Si se agregan herramientas (linter, tester, etc.), documentar comandos aquí.
 
 ## Flujo de registro
@@ -59,7 +60,8 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 
 ## Login
 
-- Busca por `Name` + `Password` primero en `Clientes`, luego por `Usuario` + `Password` en `Admins`.
+- Busca por `Usuario` + `Password` primero en `Admins`, luego por `Name` + `Password` en `Clientes`.
+- Si es admin, se normaliza `Name: admin.Nombre || admin.Usuario` para mostrar en Dashboard.
 - La comparación de nombre/usuario es case-insensitive (`ilike`).
 - RLS requiere políticas SELECT `TO public` en ambas tablas.
 

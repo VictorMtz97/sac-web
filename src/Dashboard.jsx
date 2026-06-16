@@ -24,6 +24,16 @@ function Dashboard({ user, onLogout }) {
   const [deleteError, setDeleteError] = useState('')
   const [editingId, setEditingId] = useState(null)
 
+  const [productos, setProductos] = useState([])
+  const [prodNombre, setProdNombre] = useState('')
+  const [prodDescripcion, setProdDescripcion] = useState('')
+  const [prodPrecio, setProdPrecio] = useState('')
+  const [editProductoId, setEditProductoId] = useState(null)
+  const [prodError, setProdError] = useState('')
+  const [prodSuccess, setProdSuccess] = useState('')
+  const [prodDeleteModal, setProdDeleteModal] = useState(false)
+  const [prodDeleteTarget, setProdDeleteTarget] = useState(null)
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('Admins').select('*')
     if (data) setAdminList(data)
@@ -140,6 +150,67 @@ function Dashboard({ user, onLogout }) {
     fetchAdmins()
   }
 
+  const fetchProductos = async () => {
+    const { data } = await supabase.from('Productos').select('*').order('id')
+    if (data) setProductos(data)
+  }
+
+  useEffect(() => {
+    fetchProductos()
+    const channel = supabase.channel('productos-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Productos' }, () => {
+        fetchProductos()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault()
+    setProdError('')
+    setProdSuccess('')
+    if (editProductoId) {
+      const { error } = await supabase
+        .from('Productos')
+        .update({ nombre: prodNombre, descripcion: prodDescripcion, precio: parseFloat(prodPrecio), updated_at: new Date() })
+        .eq('id', editProductoId)
+      if (error) { setProdError('Error al actualizar: ' + error.message); return }
+      setProdSuccess('Producto actualizado.')
+    } else {
+      const { error } = await supabase
+        .from('Productos')
+        .insert({ nombre: prodNombre, descripcion: prodDescripcion, precio: parseFloat(prodPrecio) })
+      if (error) { setProdError('Error al crear: ' + error.message); return }
+      setProdSuccess('Producto creado.')
+    }
+    cancelProductEdit()
+  }
+
+  const loadProductToEdit = (p) => {
+    setProdNombre(p.nombre)
+    setProdDescripcion(p.descripcion || '')
+    setProdPrecio(String(p.precio))
+    setEditProductoId(p.id)
+    setProdError('')
+    setProdSuccess('')
+  }
+
+  const cancelProductEdit = () => {
+    setProdNombre('')
+    setProdDescripcion('')
+    setProdPrecio('')
+    setEditProductoId(null)
+    setProdSuccess('')
+  }
+
+  const confirmDeleteProducto = async () => {
+    const { error } = await supabase.from('Productos').delete().eq('id', prodDeleteTarget)
+    if (error) { setProdError('Error al eliminar: ' + error.message); return }
+    setProdDeleteModal(false)
+    setProdDeleteTarget(null)
+    setProdSuccess('Producto eliminado.')
+  }
+
   return (
     <div className="dashboard-layout">
       <aside className="sidebar">
@@ -152,13 +223,13 @@ function Dashboard({ user, onLogout }) {
         {isAdmin && (
           <nav className="sidebar-nav">
             <a href="#" className={`sidebar-link ${section === 'registro' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('registro') }}>Registro</a>
+            <a href="#" className={`sidebar-link ${section === 'catalogo-admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('catalogo-admin') }}>Catálogo</a>
           </nav>
         )}
         {!isAdmin && (
           <nav className="sidebar-nav">
-            <a href="#" className="sidebar-link active">Catálogo</a>
+            <a href="#" className={`sidebar-link ${section === 'cotizacion' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('cotizacion') }}>Cotización</a>
             <a href="#" className="sidebar-link">Mis estudios</a>
-            <a href="#" className="sidebar-link">Cotización</a>
             <a href="#" className="sidebar-link">Soporte</a>
           </nav>
         )}
@@ -242,10 +313,84 @@ function Dashboard({ user, onLogout }) {
           </div>
         )}
         {isAdmin && section === 'home' && <h1>Entraste como admin</h1>}
-        {!isAdmin && <h1>Accediste correctamente</h1>}
+        {!isAdmin && section === 'home' && <h1>Accediste correctamente</h1>}
+        {isAdmin && section === 'catalogo-admin' && (
+          <div className="admin-registro-container">
+            <div className="admin-form-wrapper">
+              <h2 className="admin-form-title">{editProductoId ? 'Editar Producto' : 'Agregar Producto'}</h2>
+              <form onSubmit={handleProductSubmit} autoComplete="off">
+                <label>Nombre del producto:</label>
+                <input type="text" value={prodNombre} onChange={(e) => setProdNombre(e.target.value)} required />
+                <label>Descripción:</label>
+                <textarea className="producto-textarea" value={prodDescripcion} onChange={(e) => setProdDescripcion(e.target.value)} rows={3} />
+                <label>Precio (MXN):</label>
+                <input type="number" step="0.01" min="0" value={prodPrecio} onChange={(e) => setProdPrecio(e.target.value)} required />
+                {prodError && <div className="admin-form-error">{prodError}</div>}
+                {prodSuccess && <div className="admin-form-success">{prodSuccess}</div>}
+                <button type="submit">{editProductoId ? 'Actualizar' : 'Crear producto'}</button>
+                {editProductoId && (
+                  <a href="#" className="admin-cancel-edit" onClick={(e) => { e.preventDefault(); cancelProductEdit() }}>Cancelar edición</a>
+                )}
+              </form>
+            </div>
+            <div className="admin-table-wrapper">
+              <h2 className="admin-table-title">Productos</h2>
+              <div className="admin-table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Descripción</th>
+                      <th>Precio</th>
+                      <th className="admin-th-action">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productos.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.nombre}</td>
+                        <td>{p.descripcion || '-'}</td>
+                        <td>${Number(p.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        <td>
+                          <div className="admin-action-btns">
+                            <button className="admin-btn-edit" onClick={() => loadProductToEdit(p)}>Editar</button>
+                            <button className="admin-btn-delete" onClick={() => { setProdDeleteTarget(p.id); setProdDeleteModal(true) }}>Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {productos.length === 0 && (
+                      <tr><td colSpan={4} className="admin-table-empty">No hay productos</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        {!isAdmin && section === 'cotizacion' && (
+          <div className="catalogo-container">
+            <h1 className="catalogo-title">Estudios de laboratorio</h1>
+            <div className="catalogo-grid">
+              {productos.map((p) => (
+                <div key={p.id} className="producto-card">
+                  <h3 className="producto-nombre">{p.nombre}</h3>
+                  {p.descripcion && <p className="producto-desc">{p.descripcion}</p>}
+                  <div className="producto-footer">
+                    <span className="producto-precio">${Number(p.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    <button className="producto-btn-carrito">Cotizar</button>
+                  </div>
+                </div>
+              ))}
+              {productos.length === 0 && (
+                <p className="catalogo-empty">No hay productos disponibles aún.</p>
+              )}
+            </div>
+          </div>
+        )}
       </main>
       {deleteModalOpen && (
-        <div className="admin-modal-overlay" onClick={() => setDeleteModalOpen(false)}>
+        <div className="admin-modal-overlay">
           <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="admin-modal-close" onClick={() => setDeleteModalOpen(false)}>&times;</button>
             <h2>¿Estás seguro de borrar la cuenta?</h2>
@@ -260,6 +405,19 @@ function Dashboard({ user, onLogout }) {
             <div className="admin-modal-actions">
               <button className="admin-modal-cancel" onClick={() => setDeleteModalOpen(false)}>Cancelar</button>
               <button className="admin-modal-confirm" onClick={handleConfirmDelete}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {prodDeleteModal && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-content">
+            <button className="admin-modal-close" onClick={() => setProdDeleteModal(false)}>&times;</button>
+            <h2>¿Eliminar producto?</h2>
+            <p>Esta acción no se puede deshacer.</p>
+            <div className="admin-modal-actions">
+              <button className="admin-modal-cancel" onClick={() => setProdDeleteModal(false)}>Cancelar</button>
+              <button className="admin-modal-confirm" onClick={confirmDeleteProducto}>Eliminar</button>
             </div>
           </div>
         </div>
