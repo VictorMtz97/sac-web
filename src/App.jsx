@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Dashboard from './Dashboard'
 import QuienesSomos from './pages/QuienesSomos'
-import Catalogo from './pages/Catalogo'
+import Sucursales from './pages/Sucursales'
 import { version as appVersion } from '../package.json'
 import './App.css'
 
@@ -295,11 +295,11 @@ function App() {
             <div className="logo" onClick={() => setPage('login')} style={{ cursor: 'pointer' }}>SAC</div>
             <nav>
               <a href="#" onClick={(e) => { e.preventDefault(); setPage('quienes-somos') }}>Quiénes somos</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); setPage('catalogo') }}>Catálogo</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('sucursales') }}>Sucursales</a>
             </nav>
           </header>
           {page === 'quienes-somos' && <QuienesSomos />}
-          {page === 'catalogo' && <Catalogo />}
+          {page === 'sucursales' && <Sucursales />}
           {page === 'login' && (
           <div className="container">
             <div className="image-box"></div>
