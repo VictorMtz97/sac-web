@@ -11,20 +11,6 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 - **Activar venv:** `venv\Scripts\activate` (Windows) o `source venv/bin/activate` (macOS/Linux)
 - No hay scripts de lint ni typecheck.
 
-## Estructura
-
-```
-.env               → credenciales de Supabase
-index.html          → shell de Vite (título: "SUPP")
-src/
-├── main.jsx        → entry point de React
-├── App.jsx         → componente principal (login + auth)
-├── App.css         → estilos del sitio
-├── index.css       → reset global
-└── lib/
-    └── supabase.js → cliente de Supabase
-```
-
 ## Variables de entorno
 
 - `VITE_SUPABASE_URL` — URL del proyecto Supabase
@@ -45,15 +31,53 @@ src/
 - Las variables de entorno `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` deben configurarse en el dashboard de Vercel (Project > Settings > Environment Variables).
 - `npm run build` genera la carpeta `dist/` que Vercel despliega automáticamente.
 
+## Ramas
+
+- `main` — producción.
+- `development` — rama principal de trabajo.
+- `registro-y-verificacion-de-correo` — rama para registro + verificación por correo.
+- `apartado-admin-registro` — rama activa para panel de administración de admins.
+
 ## Notas
 
 - **Siempre leer este archivo (AGENTS.md) primero** cuando alguien pregunte algo, escriba un mensaje o asigne una tarea.
-- **Trabajar siempre en la rama `development`**, nunca en `main`.
 - Build con Vite. Sin framework de CSS.
 - No hay tests configurados.
 - `.env` está en `.gitignore` — las credenciales de Supabase nunca se suben al repositorio.
 - **Preguntar siempre antes** de ejecutar cualquier operación de Git (commit, push, pull, merge, cambiar de rama, etc.).
 - Si se agregan herramientas (linter, tester, etc.), documentar comandos aquí.
+
+## Flujo de registro
+
+1. Usuario llena formulario (nombre, email, password con requisitos).
+2. Se valida que el email no exista en `Clientes` (onBlur + submit).
+3. `INSERT` en tabla `Clientes` (Name, Email, Password).
+4. `supabase.auth.signInWithOtp({ email })` envía código de 8 dígitos al correo.
+5. Usuario ingresa el código en la pantalla de verificación (8 inputs individuales).
+6. `supabase.auth.verifyOtp()` confirma el código.
+7. Usuario es redirigido al login.
+
+## Login
+
+- Busca por `Name` + `Password` primero en `Clientes`, luego por `Usuario` + `Password` en `Admins`.
+- La comparación de nombre/usuario es case-insensitive (`ilike`).
+- RLS requiere políticas SELECT `TO public` en ambas tablas.
+
+## Estructura
+
+```
+.env               → credenciales de Supabase
+index.html          → shell de Vite (título: "SUPP")
+src/
+├── main.jsx        → entry point de React
+├── App.jsx         → componente principal (login + auth + registro + verificación)
+├── App.css         → estilos del sitio (incluye verify-box, code-inputs, req-list, email-taken)
+├── index.css       → reset global
+├── Dashboard.jsx   → panel post-login
+├── Dashboard.css   → estilos del dashboard
+└── lib/
+    └── supabase.js → cliente de Supabase
+```
 
 ## Versionado Semántico (SemVer)
 
