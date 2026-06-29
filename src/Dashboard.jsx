@@ -52,6 +52,8 @@ function Dashboard({ user, onLogout }) {
   const [cancelModal, setCancelModal] = useState(false)
   const [cancelTarget, setCancelTarget] = useState(null)
 
+  const [printCot, setPrintCot] = useState(null)
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('Admins').select('*')
     if (data) setAdminList(data)
@@ -287,6 +289,14 @@ function Dashboard({ user, onLogout }) {
       setCancelTarget(null)
       fetchMisCotizaciones()
     }
+  }
+
+  const handlePrint = (cot) => {
+    setPrintCot(cot)
+    setTimeout(() => {
+      window.print()
+      setPrintCot(null)
+    }, 200)
   }
 
   const fetchTodasCotizaciones = async () => {
@@ -588,7 +598,7 @@ function Dashboard({ user, onLogout }) {
                         </button>
                       )}
                       {cot.estado === 'Aceptada' && (
-                        <button className="cotizacion-btn-imprimir">
+                        <button className="cotizacion-btn-imprimir" onClick={() => handlePrint(cot)}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                           Imprimir
                         </button>
@@ -839,6 +849,48 @@ function Dashboard({ user, onLogout }) {
                 />
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {printCot && (
+        <div className="print-cotizacion">
+          <div className="print-header">
+            <h1>SUPP - Laboratorio Clínico</h1>
+            <p>Cotización #{String(printCot.id).slice(0, 8)}</p>
+          </div>
+          <div className="print-info">
+            <p><strong>Cliente:</strong> {user.Nombre || user.Name}</p>
+            <p><strong>Email:</strong> {user.Email}</p>
+            <p><strong>Fecha:</strong> {new Date(printCot.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p><strong>Estado:</strong> {printCot.estado}</p>
+          </div>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Estudio</th>
+                <th style={{ textAlign: 'right' }}>Precio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(printCot.estudios) && printCot.estudios.map((e, i) => (
+                <tr key={i}>
+                  <td>{e.nombre}</td>
+                  <td style={{ textAlign: 'right' }}>${Number(e.precio || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+              <tr className="print-total-row">
+                <td>Total</td>
+                <td style={{ textAlign: 'right' }}>${Array.isArray(printCot.estudios) ? printCot.estudios.reduce((s, e) => s + Number(e.precio || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '0.00'}</td>
+              </tr>
+            </tbody>
+          </table>
+          {printCot.nota && (
+            <div className="print-nota">
+              <p><strong>Nota:</strong> {printCot.nota}</p>
+            </div>
+          )}
+          <div className="print-footer">
+            <p>Gracias por confiar en SUPP</p>
           </div>
         </div>
       )}
