@@ -883,6 +883,69 @@
   margin: 0;
 }
 
+/* ===== Motivo de Rechazo - Cliente ===== */
+.cotizacion-motivo-rechazo {
+  background: rgba(211, 47, 47, 0.08);
+  border: 1px solid rgba(211, 47, 47, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 0;
+}
+
+.cotizacion-motivo-rechazo p {
+  margin: 0;
+  color: #d32f2f;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ===== Acciones de Cotización - Cliente ===== */
+.cotizacion-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 20px 16px;
+}
+
+.cotizacion-btn-cancelar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(211, 47, 47, 0.1);
+  color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.4);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cotizacion-btn-cancelar:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+.cotizacion-btn-imprimir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(26, 82, 118, 0.1);
+  color: #1a5276;
+  border: 1px solid rgba(26, 82, 118, 0.4);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cotizacion-btn-imprimir:hover {
+  background: #1a5276;
+  color: white;
+}
+
 /* ===== Catálogo - Admin textarea ===== */
 .producto-textarea {
   width: 100%;

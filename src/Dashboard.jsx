@@ -49,6 +49,9 @@ function Dashboard({ user, onLogout }) {
   const [cotAdminError, setCotAdminError] = useState('')
   const [cotAdminSuccess, setCotAdminSuccess] = useState('')
 
+  const [cancelModal, setCancelModal] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState(null)
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('Admins').select('*')
     if (data) setAdminList(data)
@@ -274,6 +277,15 @@ function Dashboard({ user, onLogout }) {
         estudios: typeof c.estudios === 'string' ? JSON.parse(c.estudios) : (c.estudios || []),
       }))
       setMisCotizaciones(parsed)
+    }
+  }
+
+  const cancelarCotizacion = async (id) => {
+    const { error } = await supabase.from('Cotizaciones').update({ estado: 'Cancelada' }).eq('id', id)
+    if (!error) {
+      setCancelModal(false)
+      setCancelTarget(null)
+      fetchMisCotizaciones()
     }
   }
 
@@ -561,7 +573,26 @@ function Dashboard({ user, onLogout }) {
                     <div className="cotizacion-body">
                       <p className="cotizacion-studies">{Array.isArray(cot.estudios) ? cot.estudios.length : 0} estudio(s) — ${Array.isArray(cot.estudios) ? Number(cot.estudios.reduce((s, e) => s + Number(e.precio || 0), 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '0.00'}</p>
                       {cot.nota && <p className="cotizacion-nota">Nota: {cot.nota}</p>}
+                      {cot.estado === 'Rechazada' && cot.motivo_rechazo && (
+                        <div className="cotizacion-motivo-rechazo">
+                          <p>Motivo de rechazo: {cot.motivo_rechazo}</p>
+                        </div>
+                      )}
                       <p className="cotizacion-fecha">{new Date(cot.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <div className="cotizacion-actions">
+                      {cot.estado === 'Pendiente' && (
+                        <button className="cotizacion-btn-cancelar" onClick={() => { setCancelTarget(cot); setCancelModal(true) }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Cancelar cotización
+                        </button>
+                      )}
+                      {cot.estado === 'Aceptada' && (
+                        <button className="cotizacion-btn-imprimir">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                          Imprimir
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -707,6 +738,19 @@ function Dashboard({ user, onLogout }) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {cancelModal && cancelTarget && (
+        <div className="admin-modal-overlay" onClick={() => setCancelModal(false)}>
+          <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="admin-modal-close" onClick={() => setCancelModal(false)}>&times;</button>
+            <h2>¿Cancelar cotización?</h2>
+            <p>Se cancelará la cotización #{String(cancelTarget.id).slice(0, 8)} y no se podrá deshacer.</p>
+            <div className="admin-modal-actions">
+              <button className="admin-modal-cancel" onClick={() => setCancelModal(false)}>No, mantener</button>
+              <button className="admin-modal-confirm" onClick={() => cancelarCotizacion(cancelTarget.id)}>Sí, cancelar</button>
+            </div>
           </div>
         </div>
       )}
