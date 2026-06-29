@@ -34,6 +34,13 @@ function Dashboard({ user, onLogout }) {
   const [prodDeleteModal, setProdDeleteModal] = useState(false)
   const [prodDeleteTarget, setProdDeleteTarget] = useState(null)
 
+  const [carrito, setCarrito] = useState([])
+  const [carritoModal, setCarritoModal] = useState(false)
+  const [cotNota, setCotNota] = useState('')
+  const [cotError, setCotError] = useState('')
+  const [cotSuccess, setCotSuccess] = useState('')
+  const [misCotizaciones, setMisCotizaciones] = useState([])
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('Admins').select('*')
     if (data) setAdminList(data)
@@ -211,6 +218,72 @@ function Dashboard({ user, onLogout }) {
     setProdSuccess('Producto eliminado.')
   }
 
+  const addToCarrito = (producto) => {
+    if (carrito.find((p) => p.id === producto.id)) return
+    setCarrito([...carrito, { id: producto.id, nombre: producto.nombre, precio: producto.precio }])
+  }
+
+  const removeFromCarrito = (id) => {
+    setCarrito(carrito.filter((p) => p.id !== id))
+  }
+
+  const carritoTotal = carrito.reduce((sum, p) => sum + Number(p.precio), 0)
+
+  const enviarCotizacion = async () => {
+    setCotError('')
+    setCotSuccess('')
+    if (carrito.length === 0) {
+      setCotError('Agrega al menos un estudio')
+      return
+    }
+    const { error } = await supabase.from('Cotizaciones').insert({
+      cliente_id: user.id,
+      estudios: carrito,
+      nota: cotNota || null,
+      estado: 'Pendiente',
+    })
+    if (error) {
+      setCotError('Error al enviar: ' + error.message)
+      return
+    }
+    setCarrito([])
+    setCotNota('')
+    setCarritoModal(false)
+    setCotSuccess('Cotización enviada exitosamente')
+    fetchMisCotizaciones()
+  }
+
+  const fetchMisCotizaciones = async () => {
+    const { data, error } = await supabase
+      .from('Cotizaciones')
+      .select('*')
+      .eq('cliente_id', user.id)
+      .order('created_at', { ascending: false })
+    if (error) { console.error('Error fetching cotizaciones:', error); return }
+    if (data) {
+      const parsed = data.map((c) => ({
+        ...c,
+        estudios: typeof c.estudios === 'string' ? JSON.parse(c.estudios) : (c.estudios || []),
+      }))
+      setMisCotizaciones(parsed)
+    }
+  }
+
+  useEffect(() => {
+    if (!isAdmin && section === 'mis-cotizaciones') fetchMisCotizaciones()
+  }, [section, isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      const channel = supabase.channel('cotizaciones-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Cotizaciones' }, () => {
+          fetchMisCotizaciones()
+        })
+        .subscribe()
+      return () => { supabase.removeChannel(channel) }
+    }
+  }, [isAdmin])
+
   return (
     <div className="dashboard-layout">
       <aside className="sidebar">
@@ -228,7 +301,8 @@ function Dashboard({ user, onLogout }) {
         )}
         {!isAdmin && (
           <nav className="sidebar-nav">
-            <a href="#" className={`sidebar-link ${section === 'cotizacion' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('cotizacion') }}>Cotización</a>
+            <a href="#" className={`sidebar-link ${section === 'cotizacion' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('cotizacion') }}>Estudios</a>
+            <a href="#" className={`sidebar-link ${section === 'mis-cotizaciones' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('mis-cotizaciones') }}>Mis cotizaciones</a>
             <a href="#" className="sidebar-link">Mis estudios</a>
             <a href="#" className="sidebar-link">Soporte</a>
           </nav>
@@ -370,7 +444,14 @@ function Dashboard({ user, onLogout }) {
         )}
         {!isAdmin && section === 'cotizacion' && (
           <div className="catalogo-container">
-            <h1 className="catalogo-title">Estudios de laboratorio</h1>
+            <div className="catalogo-header">
+              <h1 className="catalogo-title">Estudios de laboratorio</h1>
+              <button className="carrito-btn" onClick={() => setCarritoModal(true)}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                {carrito.length > 0 && <span className="carrito-badge">{carrito.length}</span>}
+              </button>
+            </div>
+            {cotSuccess && <div className="admin-form-success">{cotSuccess}</div>}
             <div className="catalogo-grid">
               {productos.map((p) => (
                 <div key={p.id} className="producto-card">
@@ -378,7 +459,13 @@ function Dashboard({ user, onLogout }) {
                   {p.descripcion && <p className="producto-desc">{p.descripcion}</p>}
                   <div className="producto-footer">
                     <span className="producto-precio">${Number(p.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                    <button className="producto-btn-carrito">Cotizar</button>
+                    <button
+                      className={`producto-btn-carrito ${carrito.find((c) => c.id === p.id) ? 'producto-btn-agregado' : ''}`}
+                      onClick={() => addToCarrito(p)}
+                      disabled={carrito.find((c) => c.id === p.id)}
+                    >
+                      {carrito.find((c) => c.id === p.id) ? 'Agregado' : 'Cotizar'}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -386,6 +473,33 @@ function Dashboard({ user, onLogout }) {
                 <p className="catalogo-empty">No hay productos disponibles aún.</p>
               )}
             </div>
+          </div>
+        )}
+        {!isAdmin && section === 'mis-cotizaciones' && (
+          <div className="cotizaciones-container">
+            <h1 className="cotizaciones-title">Mis cotizaciones</h1>
+            {misCotizaciones.length === 0 ? (
+              <div className="cotizaciones-vacia">
+                <p className="cotizaciones-vacia-texto">Aún no tienes cotizaciones.</p>
+                <p className="cotizaciones-vacia-sub">Ve a <strong>Estudios</strong> y presiona "Cotizar" para agregar estudios aquí.</p>
+              </div>
+            ) : (
+              <div className="cotizaciones-lista">
+                {misCotizaciones.map((cot) => (
+                  <div key={cot.id} className="cotizacion-card">
+                    <div className="cotizacion-header">
+                      <span className="cotizacion-id">Cotización #{String(cot.id).slice(0, 8)}</span>
+                      <span className={`cotizacion-estado estado-${(cot.estado || 'pendiente').toLowerCase()}`}>{cot.estado}</span>
+                    </div>
+                    <div className="cotizacion-body">
+                      <p className="cotizacion-studies">{Array.isArray(cot.estudios) ? cot.estudios.length : 0} estudio(s) — ${Array.isArray(cot.estudios) ? Number(cot.estudios.reduce((s, e) => s + Number(e.precio || 0), 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '0.00'}</p>
+                      {cot.nota && <p className="cotizacion-nota">Nota: {cot.nota}</p>}
+                      <p className="cotizacion-fecha">{new Date(cot.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -419,6 +533,44 @@ function Dashboard({ user, onLogout }) {
               <button className="admin-modal-cancel" onClick={() => setProdDeleteModal(false)}>Cancelar</button>
               <button className="admin-modal-confirm" onClick={confirmDeleteProducto}>Eliminar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {carritoModal && (
+        <div className="admin-modal-overlay" onClick={() => setCarritoModal(false)}>
+          <div className="carrito-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="admin-modal-close" onClick={() => setCarritoModal(false)}>&times;</button>
+            <h2 className="carrito-modal-title">Tu cotización</h2>
+            {carrito.length === 0 ? (
+              <p className="carrito-vacio">El carrito está vacío</p>
+            ) : (
+              <>
+                <div className="carrito-lista">
+                  {carrito.map((p) => (
+                    <div key={p.id} className="carrito-item">
+                      <div className="carrito-item-info">
+                        <span className="carrito-item-nombre">{p.nombre}</span>
+                        <span className="carrito-item-precio">${Number(p.precio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <button className="carrito-item-remove" onClick={() => removeFromCarrito(p.id)}>&times;</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="carrito-total">
+                  <span>Total:</span>
+                  <span>${carritoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="carrito-notas">
+                  <label>Notas (opcional):</label>
+                  <textarea value={cotNota} onChange={(e) => setCotNota(e.target.value)} rows={3} placeholder="Observaciones para la cotización..." />
+                </div>
+                {cotError && <div className="admin-form-error">{cotError}</div>}
+                <div className="carrito-actions">
+                  <button className="carrito-btn-limpiar" onClick={() => { setCarrito([]); setCotNota('') }}>Limpiar</button>
+                  <button className="carrito-btn-enviar" onClick={enviarCotizacion}>Enviar cotización</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
