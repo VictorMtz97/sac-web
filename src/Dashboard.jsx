@@ -41,6 +41,14 @@ function Dashboard({ user, onLogout }) {
   const [cotSuccess, setCotSuccess] = useState('')
   const [misCotizaciones, setMisCotizaciones] = useState([])
 
+  const [todasCotizaciones, setTodasCotizaciones] = useState([])
+  const [filtroEstado, setFiltroEstado] = useState('todas')
+  const [cotDetalleModal, setCotDetalleModal] = useState(false)
+  const [cotDetalle, setCotDetalle] = useState(null)
+  const [rechazoMotivo, setRechazoMotivo] = useState('')
+  const [cotAdminError, setCotAdminError] = useState('')
+  const [cotAdminSuccess, setCotAdminSuccess] = useState('')
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('Admins').select('*')
     if (data) setAdminList(data)
@@ -269,6 +277,64 @@ function Dashboard({ user, onLogout }) {
     }
   }
 
+  const fetchTodasCotizaciones = async () => {
+    const { data: cotData, error: cotError } = await supabase
+      .from('Cotizaciones')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (cotError) { console.error('Error fetching cotizaciones:', cotError); return }
+
+    const { data: clientesData } = await supabase
+      .from('Clientes')
+      .select('id, Name, Email')
+
+    const clientesMap = {}
+    if (clientesData) {
+      clientesData.forEach((c) => { clientesMap[c.id] = c })
+    }
+
+    if (cotData) {
+      const parsed = cotData.map((c) => ({
+        ...c,
+        estudios: typeof c.estudios === 'string' ? JSON.parse(c.estudios) : (c.estudios || []),
+        cliente: clientesMap[c.cliente_id] || null,
+      }))
+      setTodasCotizaciones(parsed)
+    }
+  }
+
+  const actualizarEstadoCotizacion = async (id, nuevoEstado, motivo = null) => {
+    setCotAdminError('')
+    setCotAdminSuccess('')
+    const update = { estado: nuevoEstado }
+    if (motivo) update.motivo_rechazo = motivo
+    const { error } = await supabase.from('Cotizaciones').update(update).eq('id', id)
+    if (error) {
+      setCotAdminError('Error al actualizar: ' + error.message)
+      return
+    }
+    setCotAdminSuccess(`Cotización ${nuevoEstado.toLowerCase()} exitosamente`)
+    setCotDetalleModal(false)
+    setCotDetalle(null)
+    setRechazoMotivo('')
+    fetchTodasCotizaciones()
+  }
+
+  useEffect(() => {
+    if (isAdmin && section === 'cotizaciones-admin') fetchTodasCotizaciones()
+  }, [section, isAdmin])
+
+  useEffect(() => {
+    if (isAdmin) {
+      const channel = supabase.channel('cotizaciones-admin-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Cotizaciones' }, () => {
+          if (section === 'cotizaciones-admin') fetchTodasCotizaciones()
+        })
+        .subscribe()
+      return () => { supabase.removeChannel(channel) }
+    }
+  }, [isAdmin, section])
+
   useEffect(() => {
     if (!isAdmin && section === 'mis-cotizaciones') fetchMisCotizaciones()
   }, [section, isAdmin])
@@ -297,6 +363,7 @@ function Dashboard({ user, onLogout }) {
           <nav className="sidebar-nav">
             <a href="#" className={`sidebar-link ${section === 'registro' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('registro') }}>Registro</a>
             <a href="#" className={`sidebar-link ${section === 'catalogo-admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('catalogo-admin') }}>Catálogo</a>
+            <a href="#" className={`sidebar-link ${section === 'cotizaciones-admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setSection('cotizaciones-admin') }}>Cotizaciones</a>
           </nav>
         )}
         {!isAdmin && (
@@ -502,6 +569,75 @@ function Dashboard({ user, onLogout }) {
             )}
           </div>
         )}
+        {isAdmin && section === 'cotizaciones-admin' && (
+          <div className="cotizaciones-admin-container">
+            <h1 className="cotizaciones-admin-title">Cotizaciones de Clientes</h1>
+            {cotAdminSuccess && <div className="admin-form-success">{cotAdminSuccess}</div>}
+
+            <div className="cotizaciones-admin-filtros">
+              {['todas', 'Pendiente', 'Aceptada', 'Rechazada'].map((estado) => {
+                const label = estado === 'todas' ? 'Todas' : estado
+                const count = estado === 'todas'
+                  ? todasCotizaciones.length
+                  : todasCotizaciones.filter((c) => c.estado === estado).length
+                return (
+                  <button
+                    key={estado}
+                    className={`cotizaciones-admin-filtro-btn ${filtroEstado === estado ? 'activo' : ''}`}
+                    onClick={() => setFiltroEstado(estado)}
+                  >
+                    {label} ({count})
+                  </button>
+                )
+              })}
+            </div>
+
+            {todasCotizaciones.length === 0 ? (
+              <div className="cotizaciones-admin-vacia">
+                <p>No hay cotizaciones de clientes aún.</p>
+              </div>
+            ) : (
+              <div className="cotizaciones-admin-grid">
+                {todasCotizaciones
+                  .filter((c) => filtroEstado === 'todas' || c.estado === filtroEstado)
+                  .map((cot) => {
+                    const total = Array.isArray(cot.estudios)
+                      ? cot.estudios.reduce((s, e) => s + Number(e.precio || 0), 0)
+                      : 0
+                    const clienteNombre = cot.cliente?.Name || 'Cliente desconocido'
+                    const clienteEmail = cot.cliente?.Email || ''
+                    return (
+                      <div key={cot.id} className="cotizaciones-admin-card">
+                        <div className="cotizaciones-admin-card-header">
+                          <span className="cotizaciones-admin-card-id">Cotización #{String(cot.id).slice(0, 8)}</span>
+                          <span className={`cotizacion-estado estado-${(cot.estado || 'pendiente').toLowerCase()}`}>{cot.estado}</span>
+                        </div>
+                        <div className="cotizaciones-admin-card-body">
+                          <div className="cotizaciones-admin-card-cliente">
+                            <span className="cotizaciones-admin-card-label">Cliente:</span>
+                            <span className="cotizaciones-admin-card-valor">{clienteNombre}</span>
+                            {clienteEmail && <span className="cotizaciones-admin-card-email">{clienteEmail}</span>}
+                          </div>
+                          <div className="cotizaciones-admin-card-info">
+                            <p>{Array.isArray(cot.estudios) ? cot.estudios.length : 0} estudio(s) — ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                            {cot.nota && <p className="cotizaciones-admin-card-nota">Nota: {cot.nota}</p>}
+                            {cot.motivo_rechazo && <p className="cotizaciones-admin-card-rechazo">Motivo rechazo: {cot.motivo_rechazo}</p>}
+                          </div>
+                          <p className="cotizaciones-admin-card-fecha">{new Date(cot.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <button className="cotizaciones-admin-card-btn" onClick={() => { setCotDetalle(cot); setCotDetalleModal(true); setRechazoMotivo(''); setCotAdminError('') }}>Ver detalle</button>
+                      </div>
+                    )
+                  })}
+                {todasCotizaciones.filter((c) => filtroEstado === 'todas' || c.estado === filtroEstado).length === 0 && (
+                  <div className="cotizaciones-admin-vacia">
+                    <p>No hay cotizaciones con estado "{filtroEstado}".</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
       {deleteModalOpen && (
         <div className="admin-modal-overlay">
@@ -570,6 +706,94 @@ function Dashboard({ user, onLogout }) {
                   <button className="carrito-btn-enviar" onClick={enviarCotizacion}>Enviar cotización</button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+      {cotDetalleModal && cotDetalle && (
+        <div className="admin-modal-overlay" onClick={() => setCotDetalleModal(false)}>
+          <div className="cotizaciones-admin-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="admin-modal-close" onClick={() => setCotDetalleModal(false)}>&times;</button>
+            <h2 className="cotizaciones-admin-modal-title">Cotización #{String(cotDetalle.id).slice(0, 8)}</h2>
+
+            <div className="cotizaciones-admin-modal-info">
+              <div className="cotizaciones-admin-modal-row">
+                <span className="cotizaciones-admin-modal-label">Cliente:</span>
+                <span>{cotDetalle.cliente?.Name || 'Desconocido'}</span>
+              </div>
+              <div className="cotizaciones-admin-modal-row">
+                <span className="cotizaciones-admin-modal-label">Email:</span>
+                <span>{cotDetalle.cliente?.Email || '-'}</span>
+              </div>
+              <div className="cotizaciones-admin-modal-row">
+                <span className="cotizaciones-admin-modal-label">Fecha:</span>
+                <span>{new Date(cotDetalle.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              </div>
+              <div className="cotizaciones-admin-modal-row">
+                <span className="cotizaciones-admin-modal-label">Estado:</span>
+                <span className={`cotizacion-estado estado-${(cotDetalle.estado || 'pendiente').toLowerCase()}`}>{cotDetalle.estado}</span>
+              </div>
+            </div>
+
+            <h3 className="cotizaciones-admin-modal-subtitle">Estudios</h3>
+            <div className="cotizaciones-admin-modal-estudios">
+              {Array.isArray(cotDetalle.estudios) && cotDetalle.estudios.map((e, i) => (
+                <div key={i} className="cotizaciones-admin-modal-estudio-item">
+                  <span>{e.nombre}</span>
+                  <span>${Number(e.precio || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                </div>
+              ))}
+              <div className="cotizaciones-admin-modal-total">
+                <span>Total:</span>
+                <span>${Array.isArray(cotDetalle.estudios) ? cotDetalle.estudios.reduce((s, e) => s + Number(e.precio || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '0.00'}</span>
+              </div>
+            </div>
+
+            {cotDetalle.nota && (
+              <div className="cotizaciones-admin-modal-nota">
+                <span className="cotizaciones-admin-modal-label">Nota del cliente:</span>
+                <p>{cotDetalle.nota}</p>
+              </div>
+            )}
+
+            {cotDetalle.motivo_rechazo && (
+              <div className="cotizaciones-admin-modal-rechazo">
+                <span className="cotizaciones-admin-modal-label">Motivo de rechazo:</span>
+                <p>{cotDetalle.motivo_rechazo}</p>
+              </div>
+            )}
+
+            {cotAdminError && <div className="admin-form-error">{cotAdminError}</div>}
+
+            <div className="cotizaciones-admin-modal-acciones">
+              {cotDetalle.estado !== 'Aceptada' && (
+                <button className="cotizaciones-admin-btn-aceptar" onClick={() => actualizarEstadoCotizacion(cotDetalle.id, 'Aceptada')}>Aceptar</button>
+              )}
+              {cotDetalle.estado !== 'Rechazada' && (
+                <button className="cotizaciones-admin-btn-rechazar" onClick={() => {
+                  if (!rechazoMotivo.trim()) {
+                    setCotAdminError('Debes escribir un motivo para rechazar')
+                    return
+                  }
+                  setCotAdminError('')
+                  actualizarEstadoCotizacion(cotDetalle.id, 'Rechazada', rechazoMotivo.trim())
+                }}>Rechazar</button>
+              )}
+              {cotDetalle.estado !== 'Pendiente' && (
+                <button className="cotizaciones-admin-btn-volver" onClick={() => actualizarEstadoCotizacion(cotDetalle.id, 'Pendiente')}>Volver a pendiente</button>
+              )}
+            </div>
+
+            {cotDetalle.estado !== 'Rechazada' && (
+              <div className="cotizaciones-admin-modal-rechazo-input">
+                <label>Motivo de rechazo (requerido para rechazar):</label>
+                <textarea
+                  value={rechazoMotivo}
+                  onChange={(e) => setRechazoMotivo(e.target.value)}
+                  rows={3}
+                  placeholder="Escribe el motivo del rechazo..."
+                />
+              </div>
             )}
           </div>
         </div>
