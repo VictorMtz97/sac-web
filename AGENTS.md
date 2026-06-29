@@ -38,6 +38,7 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 - `registro-y-verificacion-de-correo` — rama para registro + verificación por correo.
 - `apartado-admin-registro` — rama activa para panel de administración de admins.
 - `cotizaciones-admin` — apartado de cotizaciones para admin (cards, filtros, aceptar/rechazar).
+- `cotizaciones-clientes` — funcionalidades cliente: motivo rechazo, cancelar, imprimir.
 
 ## Notas
 
