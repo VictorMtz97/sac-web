@@ -37,6 +37,7 @@ Proyecto React con Vite + Supabase (Auth + Base de datos).
 - `development` — rama principal de trabajo.
 - `registro-y-verificacion-de-correo` — rama para registro + verificación por correo.
 - `apartado-admin-registro` — rama activa para panel de administración de admins.
+- `cotizaciones-admin` — apartado de cotizaciones para admin (cards, filtros, aceptar/rechazar).
 
 ## Notas
 
